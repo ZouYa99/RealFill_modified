@@ -114,5 +114,10 @@ To save even more memory, pass the `--set_grads_to_none` argument to the script.
 
 More info: https://pytorch.org/docs/stable/generated/torch.optim.Optimizer.zero_grad.html
 
+## Inference
+```
+python infer.py --model_path "./dirty_sufaces_bbox_model" --validation_image ./target.png" --validation_mask "./mask.png"
+```
+
 ## Acknowledge
 This repo is built upon the code of DreamBooth from diffusers and we thank the developers for their great works and efforts to release source code. Furthermore, a special "thank you" to RealFill's authors for publishing such an amazing work.
