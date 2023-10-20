@@ -38,11 +38,33 @@ from diffusers.utils import check_min_version, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
 from peft import PeftModel, LoraConfig, get_peft_model
+from pycocotools.coco import COCO
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.20.1")
 
+prompt = "a photo of surfaces with defects"
+
 logger = get_logger(__name__)
+
+coco_path = "/home/master/zhoujian/Documents/lxd/data_sample/annotations/dirty.json"
+coco = COCO(coco_path)  # 加载COCO JSON文件
+
+def make_bbox_mask(images,image_name):
+    image_ids = coco.getImgIds(imgIds=coco.getImgIds(imgIds=[])) # 获取对应图片ID
+    mask = torch.ones_like(images[0:1, :, :])
+    for img_id in image_ids:
+        img = coco.loadImgs(img_id)[0]
+        if img['file_name'] == image_name:
+            ann_ids = coco.getAnnIds(imgIds=img['id'])  # 获取对应图片的标注ID
+            img_annotations = coco.loadAnns(ann_ids) # 获取标注信息 
+            for annotation in img_annotations:
+                # 获取标注框
+                y_start,x_start,height,width = annotation['bbox']
+                y_start,x_start,height,width = int(y_start),int(x_start),int(height),int(width)
+                mask[:, y_start:y_start + height, x_start:x_start + width] = 0
+    mask = 1 - mask if random.random() < 0.5 else mask
+    return mask
 
 def make_mask(images, resolution, times=30):
     mask, times = torch.ones_like(images[0:1, :, :]), np.random.randint(1, times)
@@ -234,7 +256,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=500,
+        default=1000,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints can be used both as final"
             " checkpoints in case they are better than the last checkpoint, and are also suitable for resuming"
@@ -442,7 +464,7 @@ class RealFillDataset(Dataset):
 
         self.train_images_path = list(self.ref_data_root.iterdir()) + [self.target_image]
         self.num_train_images = len(self.train_images_path)
-        self.train_prompt = "a photo of sks"
+        self.train_prompt = prompt
 
         self.transform = transforms_v2.Compose(
             [
@@ -461,6 +483,7 @@ class RealFillDataset(Dataset):
         example = {}
 
         image = Image.open(self.train_images_path[index])
+        image_name = self.train_images_path[index].name
         image = exif_transpose(image)
 
         if not image.mode == "RGB":
@@ -478,7 +501,8 @@ class RealFillDataset(Dataset):
         if random.random() < 0.1:
             example["masks"] = torch.ones_like(example["images"][0:1, :, :])
         else:
-            example["masks"] = make_mask(example["images"], self.size)
+            example["masks"] = make_bbox_mask(example["images"],image_name)
+            # example["masks"] = make_mask(example["images"], self.size)
 
         example["conditioning_images"] = example["images"] * (example["masks"] < 0.5)
 

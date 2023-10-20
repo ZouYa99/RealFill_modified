@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # create & load model
     pipe = StableDiffusionInpaintPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-inpainting",
+        "./dirty_sufaces_bbox_model",
         torch_dtype=torch.float32,
         revision=None
     )
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     mask_image = Image.open(args.validation_mask)
 
     results = pipe(
-        ["a photo of sks"] * 16, image=image, mask_image=mask_image, 
+        ["a photo of surfaces with defects"] * 16, image=image, mask_image=mask_image, 
         num_inference_steps=25, guidance_scale=5, generator=generator, 
     ).images
 
