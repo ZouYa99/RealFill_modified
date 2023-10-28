@@ -47,8 +47,9 @@ if __name__ == "__main__":
     generator = None 
 
     # create & load model
+    # the model should be the pretrained model,because realfill train for LoRA
     pipe = StableDiffusionInpaintPipeline.from_pretrained(
-        "./dirty_sufaces_bbox_model",
+        "/home/master/zhoujian/Documents/lxd/sd_inpainting/stable-diffusion-2-inpainting",
         torch_dtype=torch.float32,
         revision=None
     )
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     mask_image = Image.open(args.validation_mask)
 
     results = pipe(
-        ["a photo of surfaces with defects"] * 16, image=image, mask_image=mask_image, 
+        ["a photo of sks"] * 16, image=image, mask_image=mask_image, 
         num_inference_steps=25, guidance_scale=5, generator=generator, 
     ).images
 

@@ -60,10 +60,10 @@ def make_bbox_mask(images,image_name):
             img_annotations = coco.loadAnns(ann_ids) # 获取标注信息 
             for annotation in img_annotations:
                 # 获取标注框
-                y_start,x_start,height,width = annotation['bbox']
+                x_start,y_start,width,height = annotation['bbox']
                 y_start,x_start,height,width = int(y_start),int(x_start),int(height),int(width)
                 mask[:, y_start:y_start + height, x_start:x_start + width] = 0
-    mask = 1 - mask if random.random() < 0.5 else mask
+    mask = 1 - mask
     return mask
 
 def make_mask(images, resolution, times=30):
@@ -469,8 +469,8 @@ class RealFillDataset(Dataset):
 
         self.transform = transforms_v2.Compose(
             [
-                transforms_v2.RandomResize(size, int(1.125 * size)),
-                transforms_v2.RandomCrop(size),
+                # transforms_v2.RandomResize(size, int(1.125 * size)),
+                # transforms_v2.RandomCrop(size),
                 transforms_v2.ToImageTensor(),
                 transforms_v2.ConvertImageDtype(),
                 transforms_v2.Normalize([0.5], [0.5]),
@@ -853,6 +853,8 @@ def main(args):
 
                 # Sample noise that we'll add to the latents
                 noise = torch.randn_like(latents)
+                # 只在被mask掉的部分加噪声
+                noise = noise * masks
                 bsz = latents.shape[0]
 
                 # Sample a random timestep for each image
@@ -876,8 +878,8 @@ def main(args):
 
                 # Compute the diffusion loss
                 assert noise_scheduler.config.prediction_type == "epsilon"
-                # weightings代表哪部分像素值可以参与loss的计算
-                loss = (weightings * F.mse_loss(model_pred.float(), noise.float(), reduction="none")).mean()
+                # weightings/masks代表哪部分像素值可以参与loss的计算
+                loss = (masks * F.mse_loss(model_pred.float(), noise.float(), reduction="none")).mean()
 
                 # Backpropagate
                 accelerator.backward(loss)
